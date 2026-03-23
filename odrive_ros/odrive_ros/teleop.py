@@ -75,7 +75,7 @@ class TelepresenceOperations(Node):
     def __init__(self):
         super().__init__("teleop")
 
-        self.declare_parameter("speed", 1.0) # float (turn/s)
+        self.declare_parameter("speed", 1.2) # float (turns/s) // Parameter not directly used
         self.declare_parameter("ramp_rate", 1.0) # float
         self.declare_parameter("wheel_seperation", 0.4) # float
         # 8cm from measurement, 1cm uncertainty
@@ -90,13 +90,12 @@ class TelepresenceOperations(Node):
                             ("ramp_rate", 1.0),  ("wheel_seperation", 0.4)]
             )
         """
-        
-        # Scale factor to convert stick (-1...1) to rev/s
-        self.scale = self.get_parameter("speed").value
 
         # Set Wheel seperation for Odometry
         self.wheel_seperation_ = self.get_parameter("wheel_seperation").value
 
+        # Set wheel radius for calculations
+        self.wheel_radius_ = self.get_parameter("wheel_radius").value
 
         self.mappings = []
         for e in drives:
@@ -170,8 +169,9 @@ class TelepresenceOperations(Node):
         self.drive()
     
     def drive(self):
-        left_side = self.bound_range(self.target.linear - 0.5 * self.target.rotation) * self.scale # pyright: ignore
-        right_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation) * self.scale # pyright: ignore
+        # Set vel. bound range, then divide to convert to turns/s
+        left_side = (self.target.linear - 0.5*self.target.rotation*self.wheel_seperation_) / (2*np.pi*self.wheel_radius_) # pyright: ignore
+        right_side = (self.target.linear + 0.5*self.target.rotation*self.wheel_seperation_) / (2*np.pi*self.wheel_radius_) # pyright: ignore
         
         for m in self.mappings:
             m.apply_speed(left_side, right_side)
@@ -180,6 +180,7 @@ class TelepresenceOperations(Node):
         #     "left_side: " + str(left_side) + " right_side: " + str(right_side)
         # )
 
+########################### OdomCB and Covariance ###########################
 
     def odomCB_(self):
         linear_vel, angular_vel, linear_var = self.current_twist_variance()
@@ -297,10 +298,10 @@ class TelepresenceOperations(Node):
     
     @staticmethod
     def bound_range(value):
-        if value > 1:
-            value = 1
-        elif value < -1:
-            value = -1
+        if value > 0.6: # Speed limit of 0.6 m/s
+            value = 0.6
+        elif value < -0.6:
+            value = -0.6
         return value
 
 
