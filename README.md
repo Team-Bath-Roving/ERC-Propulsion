@@ -1,17 +1,17 @@
 # ERC Propulsion
 
-Repository for ODrive-based hub-motor control and ROS integration for a small rover.
-This project contains utility scripts, configuration files, and a packaged ROS2 node
-(`odrive_ros`) to control multiple ODrive axes and publish joint states for RViz.
+Repository for Propulsion of a Rover for competing in ERC, including a Kinematic model and ODrive-based hub-motor control for ROS2.
+This project contains utility scripts, configuration files, and a ROS2 package.
+(`propulsion_ros`) to control implement a kinematic model and control node to actuate multiple ODrive and Steering axes.
 
 ## Contents 
 - `config.json` — default hoverboard ODrive settings (for H1/H2 motor).  
 - `calibrate.py` — helper script for calibration steps (use on a free-spinning motor only).
 - `multi_velocity.py` — simple script to test multiple drives with velocity commands.
 - `teleplot_odrive.py` — plots ODrive telemetry (works with Teleplot VSCode extension).
-- `odrive_ros/` — ROS2 Python package with the packaged node, launch, URDF, and README.
+- `propulsion_ros/` — ROS2 Python package with multiple packaged nodes, for kinematics, odrive control and mission control.
 
-## Prerequisites
+## Prerequisies
 - ODrive v3.6 (and derivatives) with [firmware version 0.5.6](https://docs.odriverobotics.com/releases/firmware), others not supported
 - [Update using STM32CubeProgrammer](https://ffbeast.github.io/docs/en/software_firmware_flashing.html). Hold BOOT then press RESET, then connect over USB
 - ODrive package: `pip install odrive` (currently using version 0.6.10.post0)
@@ -36,16 +36,53 @@ python multi_velocity.py
 ```
 
 ## ROS usage and visualization
-The repository includes a ROS2 package in `odrive_ros/` which exposes a node that
-publishes `/joint_states`, accepts velocity/position commands, and supports
-incremental moves. For ROS-specific usage, parameter details and launch examples,
-see: `odrive_ros/README.md` 
+The repository includes a ROS2 package in `propulsion_ros/` which exposes 
+three nodes `mission_control`, `teleop` and `odrive`.
+- `mission_control` - Converts controller commands into a geo-msg Twist which is actionable by the teleoperation/kinematics node.
+- `teleop` - Teleoperations and Kinematic node, takes a Twist and send the velocity and rotation commands to both steering and odrive propulsion.
+- `odrive` - Initialises the odrives, and takes velocity commands to actuate. Then returns encoder information to teleop in order to solve inverse kinematics.
+
+## Kinematic Model
+If we take a control vector $$u$$, wheel velocity vector $$\Phi$$ and Kinematic Matrix $$K$$:
+```math
+u = \begin{bmatrix}
+\dot x  \\ \dot y \\ \dot \\ \dot \theta
+\end{bmatrix} \; \;
+\Phi = \begin{bmatrix}
+\dot \phi_{1} \\
+\dot \phi_{2} \\
+\dot \phi_{3} \\
+\dot \phi_{4}
+\end{bmatrix} \; \;
+K = \begin{bmatrix}
+\cos(\theta_{1}) && \cos(\theta_{2}) && \cos(\theta_{3}) && \cos(\theta_{4}) \\
+\sin(\theta_{1}) && \sin(\theta_{2}) && \sin(\theta_{3}) && \sin(\theta_{4}) \\
+\frac{sin(\theta_{1} - \alpha_{1})}{l_{1}} && \frac{\sin(\theta_{2} - \alpha_{2})}{l_{2}}
+&& \frac{\sin(\theta_{3} - \alpha_{3})}{l_{3}} && \frac{\sin(\theta_{4} - \alpha_{4})}{l_{4}} \\
+\end{bmatrix}
+
+```
+Where $$\theta$$ is the angle of each wheel from the forward direction, $$\alpha$$ is the angle of each wheel base from the center of mass/rotation and $$l$$ is the distance
+from the center of mass/rotation of each wheel base. All angles are counter-clockwise (ccw).
+
+It can be shown that they are related by the equation:
+``` math
+u = \dfrac{K \cdot \Phi}{4}
+```
+One can find the required wheel velocities $$\Phi$$ to match the control vector $$u$$ by using the Moore-Penrose (Pseudoinverse):
+``` math
+\begin{equation}
+    K^+ = K^T (K K^T)^{-1}
+\end{equation}
+```
+Further details can be found in the original paper - [Kinematic Model](https://www.cambridge.org/core/journals/robotica/article/multiconfiguration-kinematic-model-for-active-drivesteer-fourwheel-robot-structures/FC9654B111F8B3954BF505E2B957F003?utm_campaign=shareaholic&utm_medium=copy_link&utm_source=bookmark)
 
 ## Links and documentation
 - [ODrive firmware v0.5.6 docs (DON'T USE LATEST!)](https://docs.odriverobotics.com/v/0.5.6/)
 - [Hoverboard setup (follow for new motors!)](https://docs.odriverobotics.com/v/0.5.6/hoverboard.html)
 - [API Documentation](https://docs.odriverobotics.com/v/0.5.6/fibre_types/com_odriverobotics_ODrive.html)
 - [Tuning Guide](https://docs.odriverobotics.com/v/0.5.6/control.html )
+- [Kinematic Model](https://www.cambridge.org/core/journals/robotica/article/multiconfiguration-kinematic-model-for-active-drivesteer-fourwheel-robot-structures/FC9654B111F8B3954BF505E2B957F003?utm_campaign=shareaholic&utm_medium=copy_link&utm_source=bookmark)
 
 ## Safety and tuning notes
 
