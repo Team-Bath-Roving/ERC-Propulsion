@@ -46,7 +46,7 @@ three nodes `mission_control`, `teleop` and `odrive`.
 If we take a control vector $$u$$, wheel velocity vector $$\Phi$$ and Kinematic Matrix $$K$$:
 ```math
 u = \begin{bmatrix}
-\dot x  \\ \dot y \\ \dot \\ \dot \theta
+\dot x  \\ \dot y \\ \dot \theta
 \end{bmatrix} \; \;
 \Phi = \begin{bmatrix}
 \dot \phi_{1} \\
@@ -57,8 +57,8 @@ u = \begin{bmatrix}
 K = \begin{bmatrix}
 \cos(\theta_{1}) && \cos(\theta_{2}) && \cos(\theta_{3}) && \cos(\theta_{4}) \\
 \sin(\theta_{1}) && \sin(\theta_{2}) && \sin(\theta_{3}) && \sin(\theta_{4}) \\
-\frac{sin(\theta_{1} - \alpha_{1})}{l_{1}} && \frac{\sin(\theta_{2} - \alpha_{2})}{l_{2}}
-&& \frac{\sin(\theta_{3} - \alpha_{3})}{l_{3}} && \frac{\sin(\theta_{4} - \alpha_{4})}{l_{4}} \\
+\dfrac{sin(\theta_{1} - \alpha_{1})}{l_{1}} && \dfrac{\sin(\theta_{2} - \alpha_{2})}{l_{2}}
+&& \dfrac{\sin(\theta_{3} - \alpha_{3})}{l_{3}} && \dfrac{\sin(\theta_{4} - \alpha_{4})}{l_{4}} \\
 \end{bmatrix}
 
 ```
