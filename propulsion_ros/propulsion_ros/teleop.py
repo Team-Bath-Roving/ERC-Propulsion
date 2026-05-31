@@ -48,8 +48,18 @@ class TelepresenceOperations(Node):
             [0.0, 0.0, 0.0, 0.0],
         ])
 
-        self.rotation_angles_left = [np.pi/4, 7/4 * np.pi, 7/4 * np.pi, np.pi/4]
-        self.rotation_angles_right = [5/4 * np.pi, 3/4 * np.pi, 3/4 * np.pi, 5/4 * np.pi] 
+        self.movement_threshold = 0.015
+        
+        # angles stored in radians
+        self.rotation_angles_left = [np.pi/4, - np.pi/4, - np.pi/4, np.pi/4]
+        self.rotation_angles_right = [-3/4 * np.pi, 3/4 * np.pi, 3/4 * np.pi, -3/4 * np.pi]
+        
+        # angles stored in degrees
+        self.max_ang = 225
+        self.min_ang = -225
+
+        self.prev_linear_angle = 0
+        self.wrapping = 0
 
 
         node_cb_group = MutuallyExclusiveCallbackGroup()
@@ -98,7 +108,7 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
         self.odom_timer_ = self.create_timer(0.05, self.odomCB_, node_cb_group)
-        self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
+        self.driver_timer_ = self.create_timer(0.02, self.drive, node_cb_group)
 
 
 ########################### TeleOp Functions ###########################
@@ -121,14 +131,25 @@ class TelepresenceOperations(Node):
 
         self.steer()
 
-
+    # UNFINISHED
     def steer(self):
-        linear_angle = np.arctan2(self.target.linear.y, self.target.linear.x)
-        linear_array = np.empty(4)
-        linear_array.fill(linear_angle)
-
         linear_mag = np.sqrt(self.target.linear.x ** 2 + self.target.linear.y ** 2)
+        # arbitrary threshold for now which only re-orients wheel 
+        # if there enough velocity input
+        if linear_mag < self.movement_threshold and self.target.angular.z < self.movement_threshold:
+            return
+      
+        # arctan2 returns -pi, pi
+        linear_angle = np.arctan2(self.target.linear.y, self.target.linear.x)
+        if self.prev_linear_angle > 3/4 * np.pi and linear_angle < - 3/4 * np.pi:
+            if self.wrapping < 1: self.wrapping += 1
+        elif self.prev_linear_angle < -3/4 * np.pi and linear_angle > 3/4 * np.pi:
+            if self.wrapping > -1: self.wrapping -= 1
        
+        self.prev_linear_angle = linear_angle
+        linear_array = np.empty(4)
+        linear_array.fill(linear_angle + 2 * np.pi * self.wrapping)
+        
         # 0.5 weighting for the rotation velocity, to favour the directional 
         # cmdvel
         lin_ratio = linear_mag / (abs( 0.5 * self.target.angular.z) + linear_mag)
@@ -139,26 +160,30 @@ class TelepresenceOperations(Node):
             target_angles = lin_ratio * linear_array + (1 - lin_ratio) * self.rotation_angles_right
 
         ang_msg = Float32MultiArray()
-        ang_msg.data = target_angles.tolist()
+        # convert from radians to degrees
+        ang_msg.data = self.clamp_angles_to_deg(target_angles)
 
         self.steering_angles_pub_.publish(ang_msg)
 
     def drive(self):
         kinematic_matrix = self.setup_kin_mat()
+        
+        # check_whether wheels are attempting alignment, higher threshold than for angle direction
+        linear_mag = np.sqrt(self.target.linear.x ** 2 + self.target.linear.y ** 2)
+        if linear_mag <  2 * self.movement_threshold and self.target.angular.z <  2 * self.movement_threshold:
+            target_wheel_velocities = [0.0, 0.0, 0.0, 0.0]
+        else:
+            kin_inverse = np.linalg.pinv(kinematic_matrix)
 
-        kin_inverse = np.linalg.pinv(kinematic_matrix)
+            control_vector = np.array([self.target.linear.x, self.target.linear.y, self.target.angular.z])
 
-        control_vector = np.array([self.target.linear.x, self.target.linear.y, self.target.angular.z])
-
-        target_wheel_velocities = kin_inverse @ control_vector
+            target_wheel_velocities = (4 * kin_inverse @ control_vector).tolist()
 
         msg = Float32MultiArray()
-        msg.data = target_wheel_velocities.tolist()
+        msg.data = target_wheel_velocities
 
         self.drive_velocities_pub_.publish(msg)
 
-    def driveCB_(self):
-        self.drive()
     
     def wheel_angles_set_(self, msg: Float32MultiArray):
         self.current_angles = np.array(list(msg.data))
@@ -181,13 +206,21 @@ class TelepresenceOperations(Node):
                  np.sin(self.current_angles[3] - self.alphas[3])/self.ls[3]]
             ]
         )
-        return mat
+        return mat 
+
+    def clamp_angles_to_deg(self, angles):
+        # convert to degrees
+        angles *= 180/np.pi
+
+        range_size = self.max_ang - self.min_ang 
+        return [(ang - self.min_ang) % range_size + self.min_ang for ang in list(angles)]
+
 
 ########################### OdomCB and Covariance ###########################
 
     def odomCB_(self):
 
-        state_vector = self.kinematic_matrix @ self.wheel_velocities
+        state_vector = self.kinematic_matrix @ self.wheel_velocities / 4
 
         odom_msg = Odometry(
             header=Header(

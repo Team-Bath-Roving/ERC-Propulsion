@@ -139,7 +139,7 @@ class Odrive(Node):
         # Connection timer
         self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
-        self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
+        self.driver_timer_ = self.create_timer(0.02, self.drive, node_cb_group)
         self.encoder_timer_ = self.create_timer(0.02, self.encoderCB_, node_cb_group)
 
 ########################### TeleOp Functions ###########################
@@ -192,9 +192,6 @@ class Odrive(Node):
     def velocities_set_(self, msg: Float32MultiArray):
         self.last_connection_ = time.monotonic()
         self.wheel_velocities_ = np.array(list(msg.data))
-    
-    def driveCB_(self):
-        self.drive()
     
     def drive(self):
         # divide to convert to turns/s
