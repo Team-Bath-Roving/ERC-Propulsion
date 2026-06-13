@@ -21,10 +21,7 @@ class TelepresenceOperations(Node):
 
         self.declare_parameter("speed", 1.2) # float (turns/s) // Parameter not directly used
         self.declare_parameter("ramp_rate", 1.0) # float
-        self.declare_parameter("wheel_seperation", 0.4) # float
         # 8cm from measurement, 1cm uncertainty
-        self.declare_parameter("wheel_radius", 0.08) # float
-        self.declare_parameter("wheel_radius_uncertainty", 0.01)
 
         self.declare_parameter("alpha_angles", [np.pi/4, 3/4*np.pi, 5/4 * np.pi, 7/4 * np.pi])
         # Model assumes all l_distances are equal,
@@ -168,14 +165,14 @@ class TelepresenceOperations(Node):
 
 
     def drive(self):
-        kinematic_matrix = self.setup_kin_mat()
+        self.kinematic_matrix = self.setup_kin_mat()
         
         # check_whether wheels are aligned within tolerance
         # if false then then set velocites to 0
         if not self.wheels_aligned:
             target_wheel_velocities = [0.0, 0.0, 0.0, 0.0]
         else:
-            kin_inverse = np.linalg.pinv(kinematic_matrix)
+            kin_inverse = np.linalg.pinv(self.kinematic_matrix)
 
             control_vector = np.array([self.target.linear.x, self.target.linear.y, self.target.angular.z])
 
