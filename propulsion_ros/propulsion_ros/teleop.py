@@ -51,7 +51,7 @@ class TelepresenceOperations(Node):
         # speed threshold
         self.movement_threshold = 0.015
         # angle threshold above which drive control is suspended
-        self.angle_threshold = 10.0
+        self.angle_threshold = 15.0
         
         # Assumes centre of rotation is roughly on the centre of geometry
         # (angles stored in radians)
@@ -116,8 +116,8 @@ class TelepresenceOperations(Node):
         # Connection timer
         self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
-        self.odom_timer_ = self.create_timer(0.10, self.odomCB_, node_cb_group)
-        self.driver_timer_ = self.create_timer(0.04, self.drive, node_cb_group)
+        self.odom_timer_ = self.create_timer(0.02, self.odomCB_, node_cb_group)
+        self.driver_timer_ = self.create_timer(0.02, self.drive, node_cb_group)
 
 
 ########################### TeleOp Functions ###########################
