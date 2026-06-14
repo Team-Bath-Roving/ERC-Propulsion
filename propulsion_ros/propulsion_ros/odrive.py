@@ -153,39 +153,16 @@ class Odrive(Node):
 
     def encoderCB_(self):
         # 1. Define your 2D float data (using NumPy for convenience)
-        matrix_2d = np.array([
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0]
-        ], dtype=np.float32)
+        matrix = np.array([0.0, 0.0, 0.0, 0.0])
 
         for m in self.mappings:
-            matrix_2d[0][m.index] = m.speed
-            matrix_2d[1][m.index] = m.uncertainty
-
-
-        # 2. Get the dimensions
-        rows, cols = matrix_2d.shape
+            matrix[m.index] = m.speed
 
         # 3. Instantiate the ROS2 message
         msg = Float32MultiArray()
 
-        # 4. Set up the layout metadata for Dimension 0 (Rows)
-        dim_rows = MultiArrayDimension()
-        dim_rows.label = "rows"
-        dim_rows.size = rows
-        dim_rows.stride = rows * cols # Total elements in the matrix
-        
-        # 5. Set up the layout metadata for Dimension 1 (Columns)
-        dim_cols = MultiArrayDimension()
-        dim_cols.label = "columns"
-        dim_cols.size = cols
-        dim_cols.stride = cols        # Elements in a single row
-
-        # 6. Assign the layout description to the message
-        msg.layout.dim = [dim_rows, dim_cols]
-
         # 7. Flatten your 2D data into a 1D Python list and assign it
-        msg.data = matrix_2d.flatten().tolist()
+        msg.data = matrix.tolist()
 
         self.encoder_wheel_pub_.publish(msg)
     
@@ -196,6 +173,7 @@ class Odrive(Node):
     def drive(self):
         # divide to convert to turns/s
         for m in self.mappings:
+            self.get_logger().info(str(self.wheel_velocities_))
             m.apply_speed(self.wheel_velocities_) #pyright: ignore
 
     @staticmethod

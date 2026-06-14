@@ -56,7 +56,8 @@ class TelepresenceOperations(Node):
         # Assumes centre of rotation is roughly on the centre of geometry
         # (angles stored in radians)
         self.rotation_angles = np.pi/4 - self.alphas
-        self.target_angles = np.array([0, 0, 0, 0])
+        self.target_angles = np.array([0.0, 0.0, 0.0, 0.0])
+        self.current_angles = np.array([0.0, 0.0, 0.0, 0.0])
         
         # (angles stored in degrees)
         self.max_ang = 170
@@ -227,7 +228,7 @@ class TelepresenceOperations(Node):
 
     # finds the shortest of two compliment angles with respect to the linear angle
     def find_closest_rotation_angles(self, linear_array, rotational_array):
-        min_rotation_angles = np.array([0, 0, 0, 0])
+        min_rotation_angles = np.array([0.0, 0.0, 0.0, 0.0])
         
         for index, angle in enumerate(rotational_array):
             rot_ang_1 = angle
@@ -244,7 +245,7 @@ class TelepresenceOperations(Node):
     # assumes angle_array is in degrees
     def find_minimised_target_angles(self, angle_array):
 
-        target_angles = np.array([0, 0, 0, 0])
+        target_angles = np.array([0.0, 0.0, 0.0, 0.0])
 
         for index, target_ang in enumerate(angle_array):
             t_ang_1 = target_ang
