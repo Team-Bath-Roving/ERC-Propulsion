@@ -42,7 +42,7 @@ class DriveMapping:
         if self.drive is None:
             return
 
-        v = speeds[self.index] / (2 * np.pi * self.wheel_radius)
+        v = self.polarity * speeds[self.index] / (2 * np.pi * self.wheel_radius)
         
         try:
             self.drive.axis0.controller.input_vel = v
