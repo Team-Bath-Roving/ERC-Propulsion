@@ -22,11 +22,12 @@ class TelepresenceOperations(Node):
         self.declare_parameter("speed", 1.2) # float (turns/s) // Parameter not directly used
         self.declare_parameter("ramp_rate", 1.0) # float
         # 8cm from measurement, 1cm uncertainty
-
-        self.declare_parameter("alpha_angles", [np.pi/4, 3/4*np.pi, 5/4 * np.pi, 7/4 * np.pi])
+        
+        # I, II, III, IV
+        self.declare_parameter("alpha_angles", [5.5627, 3.86206, 0.72047, 2.4211207])
         # Model assumes all l_distances are equal,
         # but can tolerate slight deviation
-        self.declare_parameter("l_distances", [1, 1, 1, 1])
+        self.declare_parameter("l_distances", [0.59, 0.59, 0.59, 0.59])
 
         """
         PYRIGHT COMPLAINS: It seems function description is written incorrectly in the source. 
@@ -91,7 +92,7 @@ class TelepresenceOperations(Node):
                 Odometry, "/propulsion/odom", qos_profile=qos_profile_sensor_data
         )
         self.steering_angles_pub_ = self.create_publisher(
-                Float32MultiArray, "/target_angles", qos_profile=qos_profile_sensor_data
+                Float32MultiArray, "/target_angles", qos_profile=10
         )
         self.drive_velocities_pub_ = self.create_publisher(
                 Float32MultiArray, "/target_wheel_velocities", qos_profile=qos_profile_sensor_data
@@ -280,14 +281,13 @@ class TelepresenceOperations(Node):
     @staticmethod
     def wrap_angles_to_deg(angles):
         # convert to degrees
-        angles *= 180/np.pi
+        temp_angles = angles * 180/np.pi
         min_ang = -180
         max_ang = 180
 
         range_size = max_ang - min_ang 
-        return [(ang - min_ang) % range_size + min_ang for ang in list(angles)]
+        return np.array([(ang - min_ang) % range_size + min_ang for ang in list(temp_angles)])
 
-    
 
 ########################### OdomCB and Covariance ###########################
 

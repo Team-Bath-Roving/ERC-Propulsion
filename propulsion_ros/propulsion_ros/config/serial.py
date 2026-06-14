@@ -1,14 +1,14 @@
 drives = [
     {
       "serial": "3471346D3034",
-      "index": 2,
-      "identifier": "left_front",
+      "index": 0,
+      "identifier": "right_front",
       "polarity": -1
     },
     {
       "serial": "348B34663034",
-      "index": 0,
-      "identifier": "right_front",
+      "index": 2,
+      "identifier": "left_front",
       "polarity": 1
     },
     {

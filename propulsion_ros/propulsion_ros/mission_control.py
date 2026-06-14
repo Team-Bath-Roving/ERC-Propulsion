@@ -39,8 +39,8 @@ class MissionControl(Node):
   
     def teleopCB_(self, msg: Joy): 
         # joystick is inverted from what you would expect
-        rotation = msg.axes[AXES["TRIGGERRIGHT"]] 
-        rotation -= msg.axes[AXES["TRIGGERLEFT"]] 
+        rotation = msg.axes[AXES["TRIGGERLEFT"]] 
+        rotation -= msg.axes[AXES["TRIGGERRIGHT"]] 
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
         rotation *= self.angular_speed_max/2 # pyright: ignore
@@ -48,7 +48,7 @@ class MissionControl(Node):
         pubtwist_msg = Twist(
                     linear=Vector3(
                         x=msg.axes[AXES["LEFTY"]] * self.speed_max, # pyright: ignore
-                        y=msg.axes[AXES["RIGHTX"]] * self.speed_max, # pyright: ignore
+                        y=msg.axes[AXES["LEFTX"]] * self.speed_max, # pyright: ignore
                         z=float(0),
                     ),
                     angular=Vector3(
