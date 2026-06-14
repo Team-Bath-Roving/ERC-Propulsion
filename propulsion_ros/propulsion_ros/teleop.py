@@ -94,7 +94,7 @@ class TelepresenceOperations(Node):
                 self.pingCB_,
                 qos_profile=qos_profile_sensor_data,
                 callback_group=node_cb_group,
-                )
+        )
 
         # Publishers
         self.encoder_odom_pub_ = self.create_publisher(
@@ -116,8 +116,8 @@ class TelepresenceOperations(Node):
         # Connection timer
         self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
-        self.odom_timer_ = self.create_timer(0.05, self.odomCB_, node_cb_group)
-        self.driver_timer_ = self.create_timer(0.02, self.drive, node_cb_group)
+        self.odom_timer_ = self.create_timer(0.10, self.odomCB_, node_cb_group)
+        self.driver_timer_ = self.create_timer(0.04, self.drive, node_cb_group)
 
 
 ########################### TeleOp Functions ###########################
