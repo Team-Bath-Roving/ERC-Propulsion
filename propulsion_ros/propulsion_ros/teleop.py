@@ -5,7 +5,7 @@ import rclpy.executors
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.qos import qos_profile_sensor_data
 
-from std_msgs.msg import Float32MultiArray, Header
+from std_msgs.msg import Float32MultiArray, Header, Bool
 from geometry_msgs.msg import Twist, TwistWithCovariance, Vector3
 from nav_msgs.msg import Odometry
 
@@ -88,6 +88,14 @@ class TelepresenceOperations(Node):
             callback_group=node_cb_group,
         )
 
+        self.ping_ = self.create_subscription(
+                Bool, 
+                "/ping",
+                self.pingCB_,
+                qos_profile=qos_profile_sensor_data,
+                callback_group=node_cb_group,
+                )
+
         # Publishers
         self.encoder_odom_pub_ = self.create_publisher(
                 Odometry, "/propulsion/odom", qos_profile=qos_profile_sensor_data
@@ -122,10 +130,11 @@ class TelepresenceOperations(Node):
             self.target.angular.z = 0.0
             self.cmd_set_(self.target)
 
+    def pingCB_(self, msg: Bool):
+        self.last_connection_ = time.monotonic()
+
     
     def cmd_set_(self, msg: Twist):
-        self.last_connection_ = time.monotonic()
-        
         self.target.linear.x = msg.linear.x
         self.target.linear.y = msg.linear.y
         self.target.angular.z = msg.angular.z  
