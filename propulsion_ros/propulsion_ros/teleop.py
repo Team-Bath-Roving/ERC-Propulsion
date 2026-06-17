@@ -55,7 +55,7 @@ class TelepresenceOperations(Node):
         
         # Assumes centre of rotation is roughly on the centre of geometry
         # (angles stored in radians)
-        self.rotation_angles = np.pi/4 - self.alphas
+        self.rotation_angles = np.pi/2 - self.alphas
         self.target_angles = np.array([0.0, 0.0, 0.0, 0.0])
         self.current_angles = np.array([0.0, 0.0, 0.0, 0.0])
         

@@ -9,6 +9,8 @@ from geometry_msgs.msg import Twist, Vector3
 
 from propulsion_ros.config.mappings import AXES
 
+import numpy as np
+
 
 ########################### MissionControl ###########################
 
@@ -19,6 +21,9 @@ class MissionControl(Node):
         # Scale factor to convert stick (-1...1) to m/s and rads/s
         self.declare_parameter("speed_max", 0.4)
         self.declare_parameter("angular_speed_max", 1.0)
+
+        # flag to deal with PS5 controller bug for the Joy package
+        self.controller_initialised = False
 
         self.speed_max = self.get_parameter("speed_max").value # m/s
         self.angular_speed_max = self.get_parameter("angular_speed_max").value # rads/s
@@ -38,17 +43,36 @@ class MissionControl(Node):
 ############################# Functions #############################
   
     def teleopCB_(self, msg: Joy): 
+        # ANNOYING CHECK TO GET AROUND CONTROLLER BUG
+        # (BOTH RIGHT AND LEFT TRIGGER MUST BE SQUEEZED TO INITIALISE)
+        if msg.axes[AXES["TRIGGERLEFT"]] == 1.0 and msg.axes[AXES["TRIGGERRIGHT"]] == 1.0:
+            self.controller_initialised = True
+
+        if not self.controller_initialised:
+            return
+        # ---
+    
+        # LINEAR
         # joystick is inverted from what you would expect
-        rotation = msg.axes[AXES["TRIGGERLEFT"]] 
-        rotation -= msg.axes[AXES["TRIGGERRIGHT"]] 
+        speed = msg.axes[AXES["TRIGGERLEFT"]] 
+        speed -= msg.axes[AXES["TRIGGERRIGHT"]] 
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
-        rotation *= self.angular_speed_max/2 # pyright: ignore
+        speed /= 2
+
+        direction_vec = np.array([msg.axes[AXES["LEFTX"]], msg.axes[AXES["LEFTY"]]]) 
+        # normalise direction_vec 
+        direction_norm = direction_vec / np.linalg.norm(direction_vec)
+        # ---
+
+        # ROTATION
+        rotation = msg.axes[AXES["RIGHTX"]] * self.angular_speed_max # pyright: ignore
+
 
         pubtwist_msg = Twist(
                     linear=Vector3(
-                        x=msg.axes[AXES["LEFTY"]] * self.speed_max, # pyright: ignore
-                        y=msg.axes[AXES["LEFTX"]] * self.speed_max, # pyright: ignore
+                        x=direction_norm[0] * self.speed_max * speed, # pyright: ignore
+                        y=direction_norm[1] * self.speed_max * speed, # pyright: ignore
                         z=float(0),
                     ),
                     angular=Vector3(
