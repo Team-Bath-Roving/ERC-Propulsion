@@ -48,14 +48,22 @@ class TelepresenceOperations(Node):
             [0.0, 0.0, 0.0, 0.0],
         ])
         
+        # measurements in meters
+        I = [0.44338, -0.3892]
+        II = [-0.4438, -0.3892]
+        III = [0.44338, 0.3892]
+        IV = [-0.44338, 0.3892]
+
+        self.wheel_pos = np.array([I, II, III, IV])
+        
         # speed threshold
         self.movement_threshold = 0.015
         # angle threshold above which drive control is suspended
-        self.angle_threshold = 15.0
+        self.angle_threshold = 10.0
         
         # Assumes centre of rotation is roughly on the centre of geometry
         # (angles stored in radians)
-        self.rotation_angles = np.pi/2 - self.alphas
+        # self.rotation_angles = np.pi/2 - self.alphas
         self.target_angles = np.array([0.0, 0.0, 0.0, 0.0])
         self.current_angles = np.array([0.0, 0.0, 0.0, 0.0])
         
@@ -139,10 +147,8 @@ class TelepresenceOperations(Node):
         self.target.linear.y = msg.linear.y
         self.target.angular.z = msg.angular.z  
 
-        self.steer()
 
 
-    # UNFINISHED
     def steer(self):
         linear_mag = np.sqrt(self.target.linear.x ** 2 + self.target.linear.y ** 2)
         # arbitrary threshold for now which only re-orients wheel 
@@ -150,23 +156,11 @@ class TelepresenceOperations(Node):
         if linear_mag < self.movement_threshold and self.target.angular.z < self.movement_threshold:
             return
       
-        # arctan2 returns -pi, pi
-        linear_angle = np.arctan2(self.target.linear.y, self.target.linear.x)
-       
-        linear_array = np.empty(4)
-        linear_array.fill(linear_angle)
+        linear_array = self.solve_wheels()
         
-        # convert arrays to degrees and wrap into the correct domain
-        linear_array_degrees = self.wrap_angles_to_deg(linear_array)
-        rotational_array_degrees = self.wrap_angles_to_deg(self.rotation_angles)
+        # wrap into the correct domain
+        target_angles = self.wrap_angles(linear_array)
 
-        # find the rotational angles which are closest to the linear target
-        target_rotational_array = self.find_closest_rotation_angles(linear_array_degrees, rotational_array_degrees)
-        
-        # 0.5 weighting for the rotation velocity, to favour the directional velocity
-        lin_ratio = linear_mag / (abs( 0.5 * self.target.angular.z) + linear_mag)
-        
-        target_angles = lin_ratio * linear_array_degrees + (1 - lin_ratio) * target_rotational_array
         self.target_angles = self.find_minimised_target_angles(target_angles)
 
         ang_msg = Float32MultiArray()
@@ -174,8 +168,37 @@ class TelepresenceOperations(Node):
 
         self.steering_angles_pub_.publish(ang_msg)
 
+    def solve_wheel(self, wheel, v, w):
+        # J is the rotation matrix divided by the angle in the limit that the angle is small
+        J = np.array([[0, 1], 
+                    [-1,  0]])
+
+        # the line below is literally the whole equation to solve...!
+        wheel_vec = v + w * J @ wheel
+        
+        # if you wanted to do stuff about the 2-way degeneracy, you'd have to modify the stuff below.
+        # as current, it will never drive a wheel backwards, but you could for example test to see 
+        # what the current angle was, and if the new angle requested was closer if flipped 180, then you
+        # could do that and then also flip the sign of the wheel_speed, etc.
+        wheel_speed = np.sqrt(np.square(wheel_vec[0]) + np.square(wheel_vec[1]))
+        wheel_steer = np.arctan2(wheel_vec[0], wheel_vec[1])
+        
+        return wheel_speed, np.rad2deg(wheel_steer)
+
+    def solve_wheels(self):    
+    
+        v = np.array((self.target.linear.y, self.target.linear.x))
+        w = self.target.angular.z
+        results = []
+    
+        for wheel in self.wheel_pos:
+            results.append(self.solve_wheel(wheel, v, w)[1])
+        
+        return np.array(results)
 
     def drive(self):
+        self.steer()
+        
         self.kinematic_matrix = self.setup_kin_mat()
         
         # check_whether wheels are aligned within tolerance
@@ -289,14 +312,13 @@ class TelepresenceOperations(Node):
     # takes whole array as input
     # converts from rads -> degrees, then wraps angles between [-180, 180]
     @staticmethod
-    def wrap_angles_to_deg(angles):
+    def wrap_angles(angles):
         # convert to degrees
-        temp_angles = angles * 180/np.pi
         min_ang = -180
         max_ang = 180
 
         range_size = max_ang - min_ang 
-        return np.array([(ang - min_ang) % range_size + min_ang for ang in list(temp_angles)])
+        return np.array([(ang - min_ang) % range_size + min_ang for ang in list(angles)])
 
 
 ########################### OdomCB and Covariance ###########################

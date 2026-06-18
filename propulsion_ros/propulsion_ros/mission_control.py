@@ -54,15 +54,16 @@ class MissionControl(Node):
     
         # LINEAR
         # joystick is inverted from what you would expect
-        speed = msg.axes[AXES["TRIGGERLEFT"]] 
-        speed -= msg.axes[AXES["TRIGGERRIGHT"]] 
+        speed = (1 -msg.axes[AXES["TRIGGERRIGHT"]])/2
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
-        speed /= 2
 
-        direction_vec = np.array([msg.axes[AXES["LEFTX"]], msg.axes[AXES["LEFTY"]]]) 
+        direction_vec = np.array([msg.axes[AXES["LEFTY"]], msg.axes[AXES["LEFTX"]]]) 
         # normalise direction_vec 
-        direction_norm = direction_vec / np.linalg.norm(direction_vec)
+        if np.abs(np.linalg.norm(direction_vec)) > 0.1:
+            direction_norm = direction_vec / np.abs(np.linalg.norm(direction_vec))
+        else:
+            direction_norm = direction_vec
         # ---
 
         # ROTATION
