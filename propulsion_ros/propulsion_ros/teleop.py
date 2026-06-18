@@ -148,7 +148,6 @@ class TelepresenceOperations(Node):
         self.target.angular.z = msg.angular.z  
 
 
-
     def steer(self):
         linear_mag = np.sqrt(self.target.linear.x ** 2 + self.target.linear.y ** 2)
         # arbitrary threshold for now which only re-orients wheel 
@@ -168,6 +167,7 @@ class TelepresenceOperations(Node):
 
         self.steering_angles_pub_.publish(ang_msg)
 
+    # EDWARD BIRCH -----------
     def solve_wheel(self, wheel, v, w):
         # J is the rotation matrix divided by the angle in the limit that the angle is small
         J = np.array([[0, 1], 
@@ -181,7 +181,7 @@ class TelepresenceOperations(Node):
         # what the current angle was, and if the new angle requested was closer if flipped 180, then you
         # could do that and then also flip the sign of the wheel_speed, etc.
         wheel_speed = np.sqrt(np.square(wheel_vec[0]) + np.square(wheel_vec[1]))
-        wheel_steer = np.arctan2(wheel_vec[0], wheel_vec[1])
+        wheel_steer = np.arctan2(wheel_vec[1], wheel_vec[0])
         
         return wheel_speed, np.rad2deg(wheel_steer)
 
@@ -192,9 +192,11 @@ class TelepresenceOperations(Node):
         results = []
     
         for wheel in self.wheel_pos:
+            # Only require the wheel angle, the main kinematic system will correct for minor missalignments
             results.append(self.solve_wheel(wheel, v, w)[1])
         
         return np.array(results)
+    # ------------------------
 
     def drive(self):
         self.steer()
